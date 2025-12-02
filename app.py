@@ -78,7 +78,7 @@ df_raw = load_data()
 st.markdown(
     """
     <div class="polipredict-title">
-        <span class="predict-grey">Poli</span><span class="predict-red">[PredicT]</span>
+        <span class="predict-grey">Poli</span><span class="predict-red">[predicT]</span>
     </div>
     <div class="polipredict-subtitle">
         Predicción de tesis matriculadas y estimación de recursos para programas de doctorado.
@@ -92,7 +92,7 @@ st.markdown("---")
 # ======================================================================
 # SIDEBAR
 # ======================================================================
-st.sidebar.title("Mi Polipredict")
+st.sidebar.title("Mi PolipredicT")
 st.sidebar.markdown("### Parámetros de entrada")
 
 # Extraer programas reales del dataset
