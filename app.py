@@ -95,23 +95,34 @@ st.markdown("---")
 st.sidebar.title("Mi Polipredict")
 st.sidebar.markdown("### Parámetros de entrada")
 
-# Extraer categorías reales
+# Extraer programas reales del dataset
 if df_raw is not None:
     grupos = sorted(df_raw["GRUPO_TITULACION"].dropna().unique().tolist())
-    cursos = sorted(df_raw["CURSO"].dropna().astype(str).unique().tolist())
 else:
     grupos = ["Grupo 1", "Grupo 2"]
-    cursos = ["2020-21", "2021-22"]
 
 grupo_titulacion = st.sidebar.selectbox("Programa de doctorado", grupos)
-curso = st.sidebar.selectbox("Curso académico", cursos)
 
-tesis_lag = st.sidebar.number_input("Tesis año anterior", min_value=0.0, value=10.0)
+st.sidebar.markdown("##### Indicadores del año anterior")
+
+# INPUT ENTERO PARA TESIS LAG
+tesis_lag = st.sidebar.number_input(
+    "Tesis matriculadas el año anterior",
+    min_value=0,
+    max_value=200,
+    value=10,
+    step=1,
+    format="%d"
+)
+
 satis_pdi_lag = st.sidebar.slider("Satisfacción PDI (0–10)", 0.0, 10.0, 7.0)
 satis_alum_lag = st.sidebar.slider("Satisfacción alumnado (0–10)", 0.0, 10.0, 7.5)
 abandono_lag = st.sidebar.slider("Tasa de abandono (%)", 0.0, 100.0, 10.0)
 
 btn_pred = st.sidebar.button("Calcular predicción y recursos", type="primary")
+
+# CURSO FIJO E INVISIBLE
+CURSO_FIJO = "2023-24"
 
 # ======================================================================
 # FUNCIÓN RECURSOS
@@ -131,20 +142,21 @@ def estimate_resources(n):
 # ======================================================================
 if btn_pred:
 
+    # Crear entrada para el modelo
     input_df = pd.DataFrame({
         "TESIS_LAG": [tesis_lag],
         "SATIS_PDI_LAG": [satis_pdi_lag],
         "SATIS_ALUM_LAG": [satis_alum_lag],
         "ABANDONO_LAG": [abandono_lag],
         "GRUPO_TITULACION": [grupo_titulacion],
-        "CURSO": [curso]
+        "CURSO": [CURSO_FIJO]
     })
 
     try:
         pred = model.predict(input_df)[0]
     except Exception as e:
         st.error("⚠️ El modelo no pudo transformar las categorías seleccionadas. "
-                 "Reentrena el modelo con handle_unknown='ignore'.")
+                 "Asegúrate de haber reentrenado el modelo con handle_unknown='ignore'.")
         st.code(str(e))
         st.stop()
 
@@ -156,6 +168,7 @@ if btn_pred:
         unsafe_allow_html=True
     )
 
+    # Recursos
     r = estimate_resources(pred_r)
 
     st.subheader("📌 Recursos estimados")
