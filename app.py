@@ -11,32 +11,44 @@ st.set_page_config(
     layout="wide"
 )
 
-UPV_RED = "#c0392b"
-UPV_GREY = "#f4f4f4"
+UPV_RED = "#d84315"
+UPV_GREY = "#f5f5f5"
 
 custom_css = f"""
 <style>
     .block-container {{
-        padding-top: 4rem !important;
-        padding-bottom: 2rem;
+        padding-top: 3.5rem !important;
+        padding-left: 6rem !important;
+        padding-right: 3rem !important;
     }}
+
     .polipredict-title {{
-        color: {UPV_RED};
+        font-family: Arial, sans-serif;
         font-weight: 700;
-        font-size: 2.4rem;
-        margin-top: 1rem;
+        font-size: 2.8rem;
         margin-bottom: 0.2rem;
+        text-align: center;
     }}
+
+    .predict-grey {{
+        color: #777;
+    }}
+    .predict-red {{
+        color: {UPV_RED};
+    }}
+
     .polipredict-subtitle {{
         color: #555;
-        font-size: 1.1rem;
-        margin-bottom: 1.5rem;
+        font-size: 1.15rem;
+        margin-bottom: 1.3rem;
+        text-align: center;
     }}
+
     .metric-card {{
         background-color: {UPV_GREY};
-        padding: 0.9rem 1.2rem;
+        padding: 1rem 1.25rem;
         border-radius: 0.75rem;
-        border-left: 5px solid {UPV_RED};
+        border-left: 6px solid {UPV_RED};
         margin-bottom: 0.7rem;
     }}
 </style>
@@ -44,7 +56,7 @@ custom_css = f"""
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ======================================================================
-# CARGA MODELO Y DATOS
+# CARGAR MODELO Y DATOS
 # ======================================================================
 @st.cache_resource
 def load_model():
@@ -61,48 +73,40 @@ model = load_model()
 df_raw = load_data()
 
 # ======================================================================
-# CABECERA
+# CABECERA ESTILO POLIFORMAT
 # ======================================================================
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    st.write("🎓")
-with col_title:
-    st.markdown('<div class="polipredict-title">PoliPredict</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="polipredict-subtitle">Predicción de tesis matriculadas y estimación de recursos para programas de doctorado.</div>',
-        unsafe_allow_html=True
-    )
+st.markdown(
+    """
+    <div class="polipredict-title">
+        <span class="predict-grey">Poli</span><span class="predict-red">[PredicT]</span>
+    </div>
+    <div class="polipredict-subtitle">
+        Predicción de tesis matriculadas y estimación de recursos para programas de doctorado.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.markdown("---")
 
 # ======================================================================
-# PANEL LATERAL
+# SIDEBAR
 # ======================================================================
 st.sidebar.title("Mi Polipredict")
 st.sidebar.markdown("### Parámetros de entrada")
 
-# Extraemos valores reales del dataset
+# Extraer categorías reales
 if df_raw is not None:
     grupos = sorted(df_raw["GRUPO_TITULACION"].dropna().unique().tolist())
-    cursos = sorted(df_raw["CURSO"].dropna().unique().astype(str).tolist())
+    cursos = sorted(df_raw["CURSO"].dropna().astype(str).unique().tolist())
 else:
     grupos = ["Grupo 1", "Grupo 2"]
     cursos = ["2020-21", "2021-22"]
 
-grupo_titulacion = st.sidebar.selectbox(
-    "Grupo / Programa de doctorado",
-    options=grupos
-)
+grupo_titulacion = st.sidebar.selectbox("Programa de doctorado", grupos)
+curso = st.sidebar.selectbox("Curso académico", cursos)
 
-curso = st.sidebar.selectbox("Curso académico (texto)", options=cursos)
-
-st.sidebar.markdown("##### Indicadores del año anterior")
-
-tesis_lag = st.sidebar.number_input(
-    "Tesis matriculadas el curso anterior",
-    min_value=0.0, value=10.0, step=1.0
-)
-
+tesis_lag = st.sidebar.number_input("Tesis año anterior", min_value=0.0, value=10.0)
 satis_pdi_lag = st.sidebar.slider("Satisfacción PDI (0–10)", 0.0, 10.0, 7.0)
 satis_alum_lag = st.sidebar.slider("Satisfacción alumnado (0–10)", 0.0, 10.0, 7.5)
 abandono_lag = st.sidebar.slider("Tasa de abandono (%)", 0.0, 100.0, 10.0)
@@ -110,30 +114,20 @@ abandono_lag = st.sidebar.slider("Tasa de abandono (%)", 0.0, 100.0, 10.0)
 btn_pred = st.sidebar.button("Calcular predicción y recursos", type="primary")
 
 # ======================================================================
-# FUNCIÓN DE RECURSOS
+# FUNCIÓN RECURSOS
 # ======================================================================
-def estimate_resources(n_theses):
-    ratio_tesis_prof = 3.0
-    horas_tutoria_tesis = 20.0
-    duracion_media = 4.0
-    porc_puesto_trabajo = 0.6
-    coste_medio_tesis = 1500.0
-    factor_admin = 1.5
-    porc_lab = 0.7
-
+def estimate_resources(n):
     return {
-        "profesores_equiv": n_theses / ratio_tesis_prof,
-        "horas_totales": n_theses * horas_tutoria_tesis,
-        "comites": n_theses,
-        "defensas": n_theses / duracion_media,
-        "puestos": n_theses * porc_puesto_trabajo,
-        "coste": n_theses * coste_medio_tesis,
-        "expedientes": n_theses * factor_admin,
-        "usuarios_lab": n_theses * porc_lab
+        "profesores": n / 3,
+        "horas": n * 20,
+        "puestos": n * 0.6,
+        "lab": n * 0.7,
+        "coste": n * 1500,
+        "expedientes": n * 1.5
     }
 
 # ======================================================================
-# ZONA PRINCIPAL DE RESULTADOS
+# CUERPO PRINCIPAL
 # ======================================================================
 if btn_pred:
 
@@ -143,48 +137,41 @@ if btn_pred:
         "SATIS_ALUM_LAG": [satis_alum_lag],
         "ABANDONO_LAG": [abandono_lag],
         "GRUPO_TITULACION": [grupo_titulacion],
-        "CURSO": [str(curso)]
+        "CURSO": [curso]
     })
 
     try:
         pred = model.predict(input_df)[0]
     except Exception as e:
         st.error("⚠️ El modelo no pudo transformar las categorías seleccionadas. "
-                 "Seguramente ‘CURSO’ o ‘GRUPO_TITULACION’ contienen una categoría "
-                 "que no existía en el conjunto de entrenamiento.")
+                 "Reentrena el modelo con handle_unknown='ignore'.")
         st.code(str(e))
         st.stop()
 
-    pred_rounded = max(0, round(pred))
+    pred_r = round(pred)
 
-    st.subheader("📊 Predicción de tesis matriculadas")
+    st.subheader("📊 Predicción")
     st.markdown(
-        f"""
-        <div class="metric-card">
-        Tesis previstas: <b>{pred_rounded}</b>  
-        <br>Valor del modelo: {pred:.2f}
-        </div>
-        """,
+        f"<div class='metric-card'>Tesis previstas: <b>{pred_r}</b></div>",
         unsafe_allow_html=True
     )
 
-    # Recursos
-    r = estimate_resources(pred_rounded)
+    r = estimate_resources(pred_r)
 
-    st.subheader("📌 Estimación de recursos")
-    col1, col2, col3 = st.columns(3)
+    st.subheader("📌 Recursos estimados")
+    c1, c2, c3 = st.columns(3)
 
-    with col1:
-        st.markdown(f"<div class='metric-card'><b>Profesores equivalentes:</b> {r['profesores_equiv']:.1f}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='metric-card'><b>Horas de tutoría:</b> {r['horas_totales']:.0f}</div>", unsafe_allow_html=True)
+    with c1:
+        st.markdown(f"<div class='metric-card'><b>Profesores:</b> {r['profesores']:.1f}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><b>Puestos:</b> {r['puestos']:.0f}</div>", unsafe_allow_html=True)
 
-    with col2:
-        st.markdown(f"<div class='metric-card'><b>Puestos de trabajo:</b> {r['puestos']:.0f}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='metric-card'><b>Usuarios laboratorio:</b> {r['usuarios_lab']:.0f}</div>", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"<div class='metric-card'><b>Horas tutoría:</b> {r['horas']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><b>Laboratorio:</b> {r['lab']:.0f}</div>", unsafe_allow_html=True)
 
-    with col3:
-        st.markdown(f"<div class='metric-card'><b>Coste anual estimado:</b> {r['coste']:.0f} €</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='metric-card'><b>Expedientes administrativos:</b> {r['expedientes']:.0f}</div>", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"<div class='metric-card'><b>Coste:</b> {r['coste']} €</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-card'><b>Expedientes:</b> {r['expedientes']}</div>", unsafe_allow_html=True)
 
 else:
-    st.info("Configura los parámetros en la barra lateral y pulsa «Calcular predicción y recursos».")
+    st.info("Ajusta los parámetros y pulsa **Calcular predicción y recursos**")
